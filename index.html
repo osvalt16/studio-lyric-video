@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Lyric Video — Crée ta vidéo YouTube</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d0b14;
+    --panel:#161222;
+    --panel2:#1e1830;
+    --line:#2c2444;
+    --text:#f1ecf7;
+    --muted:#9a8fb8;
+    --ember:#ff5c49;
+    --ember2:#ff9d3d;
+    --ok:#4ade80;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Outfit',sans-serif;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  header{
+    padding:36px 24px 20px;
+    max-width:1100px;margin:0 auto;
+  }
+  h1{
+    font-family:'Syne',sans-serif;
+    font-weight:800;
+    font-size:clamp(26px,4vw,40px);
+    letter-spacing:-.5px;
+    line-height:1.05;
+  }
+  h1 span{
+    background:linear-gradient(90deg,var(--ember),var(--ember2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  header p{color:var(--muted);margin-top:8px;font-size:15px;max-width:640px}
+  main{max-width:1100px;margin:0 auto;padding:0 24px}
+
+  .step{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px;
+    margin-top:18px;
+  }
+  .step-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .badge{
+    font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+    width:28px;height:28px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--ember),var(--ember2));
+    color:#1a0d08;flex-shrink:0;
+  }
+  .step h2{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+  .step .hint{color:var(--muted);font-size:13.5px;margin:-8px 0 14px 40px}
+
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .field{flex:1;min-width:220px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;font-weight:500}
+  input[type=text],select,textarea{
+    width:100%;
+    background:var(--panel2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--text);
+    padding:11px 13px;
+    font-family:'Outfit',sans-serif;
+    font-size:14.5px;
+  }
+  input[type=text]:focus,select:focus,textarea:focus{outline:2px solid var(--ember);outline-offset:-1px;border-color:transparent}
+  textarea{min-height:170px;resize:vertical;line-height:1.7}
+
+  .filebtn{
+    display:flex;align-items:center;gap:10px;
+    background:var(--panel2);
+    border:1px dashed var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    cursor:pointer;
+    font-size:14.5px;
+    color:var(--muted);
+    transition:border-color .15s,color .15s;
+    width:100%;
+  }
+  .filebtn:hover{border-color:var(--ember);color:var(--text)}
+  .filebtn.loaded{border-style:solid;border-color:var(--ok);color:var(--text)}
+  .filebtn input{display:none}
+
+  button.action{
+    font-family:'Syne',sans-serif;font-weight:700;font-size:15px;
+    background:linear-gradient(135deg,var(--ember),var(--ember2));
+    color:#1a0d08;border:none;border-radius:12px;
+    padding:13px 24px;cursor:pointer;
+    transition:transform .1s,opacity .15s;
+  }
+  button.action:hover{transform:translateY(-1px)}
+  button.action:disabled{opacity:.35;cursor:not-allowed;transform:none}
+  button.ghost{
+    background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);border-radius:12px;
+    padding:12px 20px;font-family:'Outfit',sans-serif;font-weight:600;
+    font-size:14px;cursor:pointer;
+  }
+  button.ghost:hover{border-color:var(--muted)}
+  button:focus-visible{outline:2px solid var(--ember2);outline-offset:2px}
+
+  /* sync */
+  #syncZone{display:none;margin-top:16px}
+  #tapBtn{
+    width:100%;padding:26px;font-size:19px;
+    background:linear-gradient(135deg,var(--ember),var(--ember2));
+    border:none;border-radius:14px;cursor:pointer;
+    font-family:'Syne',sans-serif;font-weight:800;color:#1a0d08;
+    user-select:none;
+  }
+  #tapBtn:active{transform:scale(.985)}
+  .nextline{
+    margin-top:12px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:10px;padding:14px;font-size:15px;line-height:1.5;
+  }
+  .nextline b{color:var(--ember2)}
+  #timings{margin-top:16px;display:none}
+  .trow{
+    display:flex;gap:10px;align-items:center;
+    padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px;
+  }
+  .trow:last-child{border-bottom:none}
+  .trow input{
+    width:92px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;color:var(--text);padding:6px 8px;
+    font-family:'Outfit',sans-serif;font-size:13.5px;text-align:center;
+  }
+  .trow .lyr{flex:1;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* preview */
+  #preview{
+    width:100%;border-radius:14px;display:block;
+    background:#000;border:1px solid var(--line);
+  }
+  .controls{display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  audio{width:100%;margin-top:12px;border-radius:10px}
+
+  #recState{
+    display:none;align-items:center;gap:10px;margin-top:14px;
+    background:var(--panel2);border:1px solid var(--ember);
+    border-radius:12px;padding:14px 16px;font-size:14.5px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--ember);animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  @media (prefers-reduced-motion: reduce){.dot{animation:none}}
+  #dlZone{display:none;margin-top:14px}
+  #dlZone a{
+    display:inline-block;text-decoration:none;
+    font-family:'Syne',sans-serif;font-weight:700;
+    background:var(--ok);color:#06220f;border-radius:12px;
+    padding:13px 24px;font-size:15px;
+  }
+  .note{color:var(--muted);font-size:13px;margin-top:10px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Studio <span>Lyric Video</span></h1>
+  <p>Ton MP3 + ta cover + tes paroles → une vidéo YouTube avec paroles synchronisées et équaliseur. Tout se passe dans ton navigateur : rien n'est envoyé sur internet, aucun watermark.</p>
+</header>
+
+<main>
+
+  <!-- STEP 1 -->
+  <section class="step">
+    <div class="step-head"><div class="badge">1</div><h2>Fichiers & infos</h2></div>
+    <div class="row">
+      <div class="field">
+        <label>Ta chanson (MP3 / WAV)</label>
+        <label class="filebtn" id="audioBtn">🎵 <span id="audioName">Choisir le fichier audio…</span>
+          <input type="file" id="audioFile" accept="audio/*">
+        </label>
+      </div>
+      <div class="field">
+        <label>Ta cover (image, idéalement carrée)</label>
+        <label class="filebtn" id="coverBtn">🖼️ <span id="coverName">Choisir l'image…</span>
+          <input type="file" id="coverFile" accept="image/*">
+        </label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <div class="field">
+        <label>Titre de la chanson</label>
+        <input type="text" id="songTitle" placeholder="Feu interdit" value="Feu interdit">
+      </div>
+      <div class="field">
+        <label>Nom d'artiste</label>
+        <input type="text" id="artistName" placeholder="Ton nom d'artiste">
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Résolution</label>
+        <select id="resSel">
+          <option value="1920x1080" selected>1080p (YouTube)</option>
+          <option value="1280x720">720p</option>
+          <option value="1080x1920">9:16 (Shorts)</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step">
+    <div class="step-head"><div class="badge">2</div><h2>Paroles</h2></div>
+    <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Laisse vide si tu veux juste l'équaliseur sans paroles.</p>
+    <textarea id="lyricsBox" placeholder="Premier regard dans l'open space, huit heures du mat'
+Ton café à la main, mon cœur qui se détache
+On se croise à moitié, jamais vraiment le temps
+..."></textarea>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step">
+    <div class="step-head"><div class="badge">3</div><h2>Synchro des paroles</h2></div>
+    <p class="hint">La chanson se lance, et tu appuies sur le gros bouton (ou la barre <b>Espace</b>) pile quand chaque ligne commence à être chantée. Tu pourras ajuster les temps à la main après.</p>
+    <div class="controls">
+      <button class="action" id="startSync">▶ Lancer la synchro</button>
+      <button class="ghost" id="stopSync" style="display:none">✕ Arrêter</button>
+    </div>
+    <div id="syncZone">
+      <button id="tapBtn">👆 CETTE LIGNE COMMENCE — TAP !</button>
+      <div class="nextline">Prochaine ligne : <b id="upcoming">—</b></div>
+    </div>
+    <div id="timings"></div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step">
+    <div class="step-head"><div class="badge">4</div><h2>Aperçu & export</h2></div>
+    <canvas id="preview"></canvas>
+    <audio id="player" controls></audio>
+    <div class="controls">
+      <button class="action" id="exportBtn" disabled>⏺ Exporter la vidéo</button>
+      <span class="note" style="margin-top:0">L'export enregistre en temps réel : il dure le temps de la chanson. Laisse l'onglet ouvert.</span>
+    </div>
+    <div id="recState"><div class="dot"></div><span id="recText">Enregistrement en cours…</span></div>
+    <div id="dlZone"><a id="dlLink" download="lyric-video.webm">⬇ Télécharger la vidéo</a>
+      <p class="note">Format <b>WebM</b> — accepté directement par YouTube. Si tu as besoin d'un MP4 (TikTok/Instagram), convertis avec ffmpeg : <code>ffmpeg -i video.webm video.mp4</code></p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const player = $('player');
+  const canvas = $('preview');
+  const ctx = canvas.getContext('2d');
+
+  let coverImg = null;
+  let lines = [];          // [{t: seconds, text: string}]
+  let audioReady = false;
+  let syncing = false, syncIdx = 0;
+  let recording = false;
+
+  // ---------- setup canvas size ----------
+  function applyRes(){
+    const [w,h] = $('resSel').value.split('x').map(Number);
+    canvas.width = w; canvas.height = h;
+  }
+  $('resSel').addEventListener('change', applyRes);
+  applyRes();
+
+  // ---------- file inputs ----------
+  $('audioFile').addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    player.src = URL.createObjectURL(f);
+    $('audioName').textContent = f.name;
+    $('audioBtn').classList.add('loaded');
+    audioReady = true;
+    updateExportState();
+  });
+  $('coverFile').addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const img = new Image();
+    img.onload = ()=>{ coverImg = img; };
+    img.src = URL.createObjectURL(f);
+    $('coverName').textContent = f.name;
+    $('coverBtn').classList.add('loaded');
+  });
+
+  function updateExportState(){
+    $('exportBtn').disabled = !audioReady || recording;
+  }
+
+  // ---------- audio graph (analyser + record destination) ----------
+  let actx=null, analyser=null, recDest=null, freq=null;
+  function ensureAudioGraph(){
+    if(actx) { if(actx.state==='suspended') actx.resume(); return; }
+    actx = new (window.AudioContext||window.webkitAudioContext)();
+    const src = actx.createMediaElementSource(player);
+    analyser = actx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.82;
+    freq = new Uint8Array(analyser.frequencyBinCount);
+    recDest = actx.createMediaStreamDestination();
+    src.connect(analyser);
+    analyser.connect(actx.destination);
+    analyser.connect(recDest);
+  }
+  player.addEventListener('play', ensureAudioGraph);
+
+  // ---------- lyrics sync ----------
+  function parseLyrics(){
+    return $('lyricsBox').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  }
+
+  $('startSync').addEventListener('click', ()=>{
+    if(!audioReady){ alert('Charge d\'abord ton fichier audio (étape 1).'); return; }
+    const txt = parseLyrics();
+    if(!txt.length){ alert('Écris tes paroles dans l\'étape 2 avant de synchroniser.'); return; }
+    lines = txt.map(t=>({t:null, text:t}));
+    syncIdx = 0; syncing = true;
+    $('syncZone').style.display='block';
+    $('stopSync').style.display='inline-block';
+    $('startSync').style.display='none';
+    $('upcoming').textContent = lines[0].text;
+    ensureAudioGraph();
+    player.currentTime = 0;
+    player.play();
+  });
+
+  function tap(){
+    if(!syncing) return;
+    lines[syncIdx].t = player.currentTime;
+    syncIdx++;
+    if(syncIdx >= lines.length){ endSync(); return; }
+    $('upcoming').textContent = lines[syncIdx].text;
+  }
+  $('tapBtn').addEventListener('click', tap);
+  document.addEventListener('keydown', e=>{
+    if(syncing && e.code==='Space'){ e.preventDefault(); tap(); }
+  });
+  $('stopSync').addEventListener('click', endSync);
+  player.addEventListener('ended', ()=>{ if(syncing) endSync(); });
+
+  function endSync(){
+    syncing = false;
+    player.pause();
+    $('syncZone').style.display='none';
+    $('stopSync').style.display='none';
+    $('startSync').style.display='inline-block';
+    $('startSync').textContent = '↻ Refaire la synchro';
+    lines = lines.filter(l=>l.t!==null);
+    renderTimings();
+  }
+
+  function fmt(t){
+    const m = Math.floor(t/60), s = (t%60);
+    return m+':' + s.toFixed(1).padStart(4,'0');
+  }
+  function parseTime(str){
+    const p = str.split(':');
+    if(p.length===2) return (+p[0])*60 + parseFloat(p[1]);
+    return parseFloat(str)||0;
+  }
+
+  function renderTimings(){
+    const box = $('timings');
+    if(!lines.length){ box.style.display='none'; return; }
+    box.style.display='block';
+    box.innerHTML = '';
+    lines.forEach((l,i)=>{
+      const row = document.createElement('div');
+      row.className='trow';
+      const inp = document.createElement('input');
+      inp.value = fmt(l.t);
+      inp.addEventListener('change', ()=>{ l.t = parseTime(inp.value); lines.sort((a,b)=>a.t-b.t); });
+      const sp = document.createElement('span');
+      sp.className='lyr'; sp.textContent = l.text;
+      row.appendChild(inp); row.appendChild(sp);
+      box.appendChild(row);
+    });
+  }
+
+  // ---------- drawing ----------
+  function currentLineIndex(t){
+    let idx = -1;
+    for(let i=0;i<lines.length;i++){ if(lines[i].t <= t) idx = i; else break; }
+    return idx;
+  }
+
+  function wrapText(text, maxW, font){
+    ctx.font = font;
+    const words = text.split(' ');
+    const out = []; let cur = '';
+    for(const w of words){
+      const test = cur ? cur+' '+w : w;
+      if(ctx.measureText(test).width > maxW && cur){ out.push(cur); cur = w; }
+      else cur = test;
+    }
+    if(cur) out.push(cur);
+    return out;
+  }
+
+  function draw(){
+    const W = canvas.width, H = canvas.height;
+    const t = player.currentTime || 0;
+    const portrait = H > W;
+    const base = Math.min(W,H);
+
+    // background
+    ctx.save();
+    if(coverImg){
+      const scale = Math.max(W/coverImg.width, H/coverImg.height) * 1.15;
+      const bw = coverImg.width*scale, bh = coverImg.height*scale;
+      ctx.filter = 'blur('+Math.round(base*0.03)+'px) brightness(0.32) saturate(1.15)';
+      ctx.drawImage(coverImg,(W-bw)/2,(H-bh)/2,bw,bh);
+      ctx.filter = 'none';
+    } else {
+      const g = ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,'#17101f'); g.addColorStop(1,'#2a0f14');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    }
+    ctx.restore();
+
+    // cover art + titles
+    const artSize = base * (portrait ? 0.42 : 0.30);
+    const artX = (W-artSize)/2;
+    const artY = portrait ? H*0.12 : H*0.10;
+    if(coverImg){
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=base*0.04; ctx.shadowOffsetY=base*0.01;
+      const r = artSize*0.06;
+      ctx.beginPath();
+      ctx.roundRect(artX,artY,artSize,artSize,r);
+      ctx.clip();
+      // cover crop-fill
+      const s = Math.max(artSize/coverImg.width, artSize/coverImg.height);
+      ctx.drawImage(coverImg, artX+(artSize-coverImg.width*s)/2, artY+(artSize-coverImg.height*s)/2, coverImg.width*s, coverImg.height*s);
+      ctx.restore();
+    }
+
+    ctx.textAlign='center';
+    ctx.fillStyle='#fff';
+    ctx.font = '800 '+Math.round(base*0.055)+'px Syne, sans-serif';
+    ctx.fillText($('songTitle').value || '', W/2, artY+artSize+base*0.085);
+    ctx.fillStyle='rgba(255,255,255,.55)';
+    ctx.font = '500 '+Math.round(base*0.03)+'px Outfit, sans-serif';
+    ctx.fillText($('artistName').value || '', W/2, artY+artSize+base*0.085+base*0.05);
+
+    // lyrics
+    const idx = currentLineIndex(t);
+    const lyricY = portrait ? H*0.72 : H*0.70;
+    const maxW = W*0.84;
+    if(idx>=0 && lines[idx]){
+      const mainFont = '700 '+Math.round(base*0.049)+'px Syne, sans-serif';
+      const rows = wrapText(lines[idx].text, maxW, mainFont);
+      ctx.font = mainFont;
+      const lh = base*0.062;
+      ctx.shadowColor='rgba(0,0,0,.75)'; ctx.shadowBlur=base*0.012;
+      rows.forEach((r,i)=>{
+        const g = ctx.createLinearGradient(W/2-200,0,W/2+200,0);
+        g.addColorStop(0,'#ff5c49'); g.addColorStop(1,'#ff9d3d');
+        ctx.fillStyle = g;
+        ctx.fillText(r, W/2, lyricY + i*lh);
+      });
+      ctx.shadowBlur=0;
+      // next line, faint
+      if(lines[idx+1]){
+        ctx.fillStyle='rgba(255,255,255,.35)';
+        ctx.font='400 '+Math.round(base*0.028)+'px Outfit, sans-serif';
+        const nrows = wrapText(lines[idx+1].text, maxW, ctx.font);
+        ctx.fillText(nrows[0]+(nrows.length>1?'…':''), W/2, lyricY + rows.length*lh + base*0.02);
+      }
+    } else if(lines.length && t < (lines[0]?.t ?? Infinity)){
+      ctx.fillStyle='rgba(255,255,255,.4)';
+      ctx.font='400 '+Math.round(base*0.028)+'px Outfit, sans-serif';
+      ctx.fillText('♪', W/2, lyricY);
+    }
+
+    // equalizer
+    if(analyser){
+      analyser.getByteFrequencyData(freq);
+      const bars = 56;
+      const bw = W / bars;
+      const eqH = H * 0.16;
+      for(let i=0;i<bars;i++){
+        const v = freq[Math.floor(i*freq.length*0.72/bars)] / 255;
+        const bh = Math.max(3, v*v*eqH);
+        const x = i*bw + bw*0.18;
+        const g = ctx.createLinearGradient(0,H,0,H-eqH);
+        g.addColorStop(0,'rgba(255,92,73,.95)');
+        g.addColorStop(1,'rgba(255,157,61,.85)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.roundRect(x, H-bh, bw*0.64, bh, bw*0.2);
+        ctx.fill();
+      }
+    }
+
+    // progress bar
+    if(player.duration){
+      ctx.fillStyle='rgba(255,255,255,.15)';
+      ctx.fillRect(0,0,W,base*0.006);
+      ctx.fillStyle='#ff9d3d';
+      ctx.fillRect(0,0,W*(t/player.duration),base*0.006);
+    }
+
+    requestAnimationFrame(draw);
+  }
+  // start draw loop once fonts are ready so canvas uses Syne/Outfit
+  if(document.fonts && document.fonts.ready){
+    Promise.all([
+      document.fonts.load('800 40px Syne'),
+      document.fonts.load('400 20px Outfit')
+    ]).finally(()=>requestAnimationFrame(draw));
+  } else requestAnimationFrame(draw);
+
+  // ---------- export ----------
+  $('exportBtn').addEventListener('click', async ()=>{
+    if(recording) return;
+    ensureAudioGraph();
+    await actx.resume();
+
+    const canvasStream = canvas.captureStream(30);
+    const mixed = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...recDest.stream.getAudioTracks()
+    ]);
+    let mime = 'video/webm;codecs=vp9,opus';
+    if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm;codecs=vp8,opus';
+    if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+    const rec = new MediaRecorder(mixed, {mimeType:mime, videoBitsPerSecond: 8_000_000});
+    const chunks = [];
+    rec.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
+    rec.onstop = ()=>{
+      const blob = new Blob(chunks, {type:'video/webm'});
+      const url = URL.createObjectURL(blob);
+      const a = $('dlLink');
+      a.href = url;
+      const title = ($('songTitle').value||'lyric-video').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+      a.download = title + '.webm';
+      $('dlZone').style.display='block';
+      $('recState').style.display='none';
+      recording = false;
+      updateExportState();
+    };
+
+    recording = true;
+    updateExportState();
+    $('dlZone').style.display='none';
+    $('recState').style.display='flex';
+
+    player.currentTime = 0;
+    rec.start(1000);
+    player.play();
+
+    const tick = setInterval(()=>{
+      if(!recording){ clearInterval(tick); return; }
+      $('recText').textContent = 'Enregistrement… '+fmt(player.currentTime)+' / '+fmt(player.duration||0);
+    }, 500);
+
+    const onEnd = ()=>{
+      player.removeEventListener('ended', onEnd);
+      setTimeout(()=>rec.stop(), 300);
+    };
+    player.addEventListener('ended', onEnd);
+  });
+})();
+</script>
+</body>
+</html>
