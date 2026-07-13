@@ -215,7 +215,7 @@
   <!-- STEP 2 -->
   <section class="step">
     <div class="step-head"><div class="badge">2</div><h2>Paroles</h2></div>
-    <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Les paroles s'affichent automatiquement, réparties sur la durée de la chanson. Utilise l'étape 3 pour les caler précisément. Laisse vide si tu veux juste l'équaliseur.</p>
+    <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Les paroles s'affichent automatiquement, réparties sur la durée de la chanson. Tu peux aussi coller des paroles synchronisées au format <b>[m:ss.s] texte</b> (LRC) : les temps seront utilisés directement. Sinon, utilise l'étape 3 pour les caler. Laisse vide si tu veux juste l'équaliseur.</p>
     <textarea id="lyricsBox" placeholder="Premier regard dans l'open space, huit heures du mat'
 Ton café à la main, mon cœur qui se détache
 On se croise à moitié, jamais vraiment le temps
@@ -316,7 +316,9 @@ On se croise à moitié, jamais vraiment le temps
 
   // ---------- lyrics sync ----------
   function parseLyrics(){
-    return $('lyricsBox').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    return $('lyricsBox').value.split('\n')
+      .map(s=>s.trim().replace(/^\[\d+:\d+(?:\.\d+)?\]\s*/,''))
+      .filter(Boolean);
   }
 
   // Répartition automatique : dès que le texte est saisi, les paroles
@@ -325,8 +327,18 @@ On se croise à moitié, jamais vraiment le temps
   let manualSync = false;
   function autoDistribute(){
     if(manualSync || syncing) return;
+    const raw = $('lyricsBox').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    if(!raw.length){ lines = []; renderTimings(); return; }
+    // Format LRC : chaque ligne "[m:ss.s] texte" → synchro exacte, sans tap
+    const lrc = raw.map(s=>{
+      const m = s.match(/^\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)$/);
+      return m ? {t:(+m[1])*60+parseFloat(m[2]), text:m[3].trim()} : null;
+    });
+    if(lrc.every(Boolean) && lrc.some(l=>l.text)){
+      lines = lrc.filter(l=>l.text).sort((a,b)=>a.t-b.t);
+      renderTimings(); return;
+    }
     const txt = parseLyrics();
-    if(!txt.length){ lines = []; renderTimings(); return; }
     const dur = player.duration || txt.length*3.5;
     const start = dur*0.05, span = dur*0.90;
     lines = txt.map((t,i)=>({t: start + span*i/txt.length, text:t}));
