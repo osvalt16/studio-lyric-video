@@ -215,7 +215,7 @@
   <!-- STEP 2 -->
   <section class="step">
     <div class="step-head"><div class="badge">2</div><h2>Paroles</h2></div>
-    <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Laisse vide si tu veux juste l'équaliseur sans paroles.</p>
+    <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Les paroles s'affichent automatiquement, réparties sur la durée de la chanson. Utilise l'étape 3 pour les caler précisément. Laisse vide si tu veux juste l'équaliseur.</p>
     <textarea id="lyricsBox" placeholder="Premier regard dans l'open space, huit heures du mat'
 Ton café à la main, mon cœur qui se détache
 On se croise à moitié, jamais vraiment le temps
@@ -319,6 +319,22 @@ On se croise à moitié, jamais vraiment le temps
     return $('lyricsBox').value.split('\n').map(s=>s.trim()).filter(Boolean);
   }
 
+  // Répartition automatique : dès que le texte est saisi, les paroles
+  // s'affichent réparties uniformément sur la durée de la chanson.
+  // La synchro par tap (étape 3) sert ensuite à caler précisément.
+  let manualSync = false;
+  function autoDistribute(){
+    if(manualSync || syncing) return;
+    const txt = parseLyrics();
+    if(!txt.length){ lines = []; renderTimings(); return; }
+    const dur = player.duration || txt.length*3.5;
+    const start = dur*0.05, span = dur*0.90;
+    lines = txt.map((t,i)=>({t: start + span*i/txt.length, text:t}));
+    renderTimings();
+  }
+  $('lyricsBox').addEventListener('input', autoDistribute);
+  player.addEventListener('loadedmetadata', autoDistribute);
+
   $('startSync').addEventListener('click', ()=>{
     if(!audioReady){ alert('Charge d\'abord ton fichier audio (étape 1).'); return; }
     const txt = parseLyrics();
@@ -361,6 +377,8 @@ On se croise à moitié, jamais vraiment le temps
     $('startSync').style.display='inline-block';
     $('startSync').textContent = '↻ Refaire la synchro';
     lines = lines.filter(l=>l.t!==null);
+    manualSync = lines.length > 0;
+    if(!manualSync){ autoDistribute(); return; }
     renderTimings();
   }
 
