@@ -325,6 +325,7 @@ On se croise à moitié, jamais vraiment le temps
     if(!txt.length){ alert('Écris tes paroles dans l\'étape 2 avant de synchroniser.'); return; }
     lines = txt.map(t=>({t:null, text:t}));
     syncIdx = 0; syncing = true;
+    $('timings').style.display='none';
     $('syncZone').style.display='block';
     $('stopSync').style.display='inline-block';
     $('startSync').style.display='none';
@@ -334,17 +335,21 @@ On se croise à moitié, jamais vraiment le temps
     player.play();
   });
 
+  const TAP_LATENCY = 0.15; // compensation du temps de réaction humain
   function tap(){
     if(!syncing) return;
-    lines[syncIdx].t = player.currentTime;
+    if(player.paused) return; // pas de tap si la musique ne joue pas
+    lines[syncIdx].t = Math.max(0, player.currentTime - TAP_LATENCY);
     syncIdx++;
     if(syncIdx >= lines.length){ endSync(); return; }
     $('upcoming').textContent = lines[syncIdx].text;
   }
-  $('tapBtn').addEventListener('click', tap);
+  $('tapBtn').addEventListener('click', ()=>{ $('tapBtn').blur(); tap(); });
   document.addEventListener('keydown', e=>{
-    if(syncing && e.code==='Space'){ e.preventDefault(); tap(); }
-  });
+    if(syncing && e.code==='Space' && !e.repeat){
+      e.preventDefault(); e.stopPropagation(); tap();
+    }
+  }, true);
   $('stopSync').addEventListener('click', endSync);
   player.addEventListener('ended', ()=>{ if(syncing) endSync(); });
 
@@ -369,11 +374,32 @@ On se croise à moitié, jamais vraiment le temps
     return parseFloat(str)||0;
   }
 
+  function shiftAll(d){
+    lines.forEach(l=>{ l.t = Math.max(0, l.t + d); });
+    renderTimings();
+  }
+
   function renderTimings(){
     const box = $('timings');
     if(!lines.length){ box.style.display='none'; return; }
     box.style.display='block';
     box.innerHTML = '';
+    // barre de décalage global (si tout est en avance/retard)
+    const bar = document.createElement('div');
+    bar.className = 'trow';
+    const lbl = document.createElement('span');
+    lbl.className = 'lyr';
+    lbl.textContent = 'Décaler toutes les lignes :';
+    bar.appendChild(lbl);
+    [['−0.5s',-0.5],['−0.2s',-0.2],['+0.2s',0.2],['+0.5s',0.5]].forEach(([txt,d])=>{
+      const b = document.createElement('button');
+      b.className = 'ghost';
+      b.style.cssText = 'padding:6px 12px;font-size:13px;border-radius:8px';
+      b.textContent = txt;
+      b.addEventListener('click', ()=>shiftAll(d));
+      bar.appendChild(b);
+    });
+    box.appendChild(bar);
     lines.forEach((l,i)=>{
       const row = document.createElement('div');
       row.className='trow';
@@ -390,7 +416,10 @@ On se croise à moitié, jamais vraiment le temps
   // ---------- drawing ----------
   function currentLineIndex(t){
     let idx = -1;
-    for(let i=0;i<lines.length;i++){ if(lines[i].t <= t) idx = i; else break; }
+    for(let i=0;i<lines.length;i++){
+      if(lines[i].t === null) break; // ligne pas encore synchronisée
+      if(lines[i].t <= t) idx = i; else break;
+    }
     return idx;
   }
 
@@ -471,7 +500,7 @@ On se croise à moitié, jamais vraiment le temps
       });
       ctx.shadowBlur=0;
       // next line, faint
-      if(lines[idx+1]){
+      if(lines[idx+1] && lines[idx+1].t !== null){
         ctx.fillStyle='rgba(255,255,255,.35)';
         ctx.font='400 '+Math.round(base*0.028)+'px Outfit, sans-serif';
         const nrows = wrapText(lines[idx+1].text, maxW, ctx.font);
