@@ -230,6 +230,10 @@
         <label>Afficher sur la vidéo</label>
         <button type="button" class="ghost" id="promoToggle" style="width:100%;border-color:var(--ok)">✅ Bandeau affiché</button>
       </div>
+      <div class="field" style="max-width:260px">
+        <label>Bandeau « Disponible sur » (logos)</label>
+        <button type="button" class="ghost" id="platToggle" style="width:100%;border-color:var(--ok)">🎧 Plateformes affichées</button>
+      </div>
     </div>
   </section>
 
@@ -323,6 +327,14 @@ On se croise à moitié, jamais vraiment le temps
     img.src = URL.createObjectURL(f);
     $('coverName').textContent = f.name;
     $('coverBtn').classList.add('loaded');
+  });
+
+  // Bouton ON/OFF du bandeau plateformes
+  let platOn = true;
+  $('platToggle').addEventListener('click', ()=>{
+    platOn = !platOn;
+    $('platToggle').textContent = platOn ? '🎧 Plateformes affichées' : '🚫 Plateformes masquées';
+    $('platToggle').style.borderColor = platOn ? 'var(--ok)' : 'var(--line)';
   });
 
   // Bouton ON/OFF du bandeau promo
@@ -643,6 +655,78 @@ On se croise à moitié, jamais vraiment le temps
       ctx.fillStyle = 'rgba(255,255,255,.95)';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(promo, lx + icoW + gap, py + pillH/2 + pf*0.05);
+      ctx.restore();
+    }
+
+    // Bandeau « Disponible sur » avec logos des plateformes
+    if(platOn){
+      const pf2 = Math.round(base*0.022);
+      ctx.save();
+      ctx.font = '600 '+pf2+'px Outfit, sans-serif';
+      const lbl = 'Disponible sur';
+      const lw2 = ctx.measureText(lbl).width;
+      const ico = pf2*1.55, gap2 = pf2*0.55;
+      const pillW2 = pf2*1.7 + lw2 + gap2 + 4*(ico+gap2);
+      const pillH2 = pf2*2.2;
+      const baseY = H - base*0.05 - pillH2/2;
+      const hasPromo = promoOn && $('promoText').value.trim();
+      const py2 = (hasPromo ? baseY - pillH2*1.35 : baseY) - pillH2/2;
+      const px2 = (W-pillW2)/2;
+      ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=pf2*0.5;
+      ctx.fillStyle = 'rgba(10,8,16,.72)';
+      ctx.beginPath(); ctx.roundRect(px2, py2, pillW2, pillH2, pillH2/2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = Math.max(1, pf2*0.06);
+      ctx.beginPath(); ctx.roundRect(px2, py2, pillW2, pillH2, pillH2/2); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(lbl, px2 + pf2*0.85, py2 + pillH2/2 + pf2*0.05);
+      let ix = px2 + pf2*0.85 + lw2 + gap2;
+      const iy = py2 + (pillH2-ico)/2;
+      // Spotify : cercle vert + 3 ondes
+      (function(x,y,s){
+        const cx=x+s/2, cy=y+s/2, r=s/2;
+        ctx.fillStyle='#1DB954'; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineCap='round';
+        [[0.62,0.72],[0.47,0.52],[0.33,0.34]].forEach(([rr,ry])=>{
+          ctx.lineWidth=s*0.085;
+          ctx.beginPath(); ctx.arc(cx, cy+s*ry, r*rr*1.5, Math.PI*1.28, Math.PI*1.72); ctx.stroke();
+        });
+      })(ix, iy, ico); ix += ico+gap2;
+      // Apple Music : carré arrondi dégradé rose + note
+      (function(x,y,s){
+        const g = ctx.createLinearGradient(x,y,x,y+s);
+        g.addColorStop(0,'#FB5C74'); g.addColorStop(1,'#FA233B');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.roundRect(x,y,s,s,s*0.24); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.font='700 '+Math.round(s*0.72)+'px Outfit, sans-serif';
+        ctx.fillText('\u266A', x+s/2, y+s*0.56);
+      })(ix, iy, ico); ix += ico+gap2;
+      // Deezer : barres dégradé violet/rose
+      (function(x,y,s){
+        const g = ctx.createLinearGradient(x,y,x+s,y+s);
+        g.addColorStop(0,'#A238FF'); g.addColorStop(1,'#FF0092');
+        ctx.fillStyle=g;
+        const bw2=s*0.26, bh2=s*0.14, gp=s*0.09;
+        [[0.72,3],[0.44,2],[0.16,1]].forEach(([ty,n])=>{
+          for(let k=0;k<n;k++){
+            ctx.beginPath(); ctx.roundRect(x+s-((k+1)*(bw2+gp))+gp, y+s*ty, bw2, bh2, bh2/2); ctx.fill();
+          }
+        });
+      })(ix, iy, ico); ix += ico+gap2;
+      // YouTube Music : cercle rouge + anneau + triangle
+      (function(x,y,s){
+        const cx=x+s/2, cy=y+s/2, r=s/2;
+        ctx.fillStyle='#FF0000'; ctx.beginPath(); ctx.arc(cx,cy,r,0,7); ctx.fill();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=s*0.07;
+        ctx.beginPath(); ctx.arc(cx,cy,r*0.62,0,7); ctx.stroke();
+        ctx.fillStyle='#fff';
+        ctx.beginPath();
+        ctx.moveTo(cx-r*0.22, cy-r*0.30);
+        ctx.lineTo(cx-r*0.22, cy+r*0.30);
+        ctx.lineTo(cx+r*0.36, cy);
+        ctx.closePath(); ctx.fill();
+      })(ix, iy, ico);
       ctx.restore();
     }
 
