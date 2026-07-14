@@ -258,8 +258,8 @@ On se croise à moitié, jamais vraiment le temps
       <span class="note" style="margin-top:0">L'export enregistre en temps réel : il dure le temps de la chanson. Laisse l'onglet ouvert.</span>
     </div>
     <div id="recState"><div class="dot"></div><span id="recText">Enregistrement en cours…</span></div>
-    <div id="dlZone"><a id="dlLink" download="lyric-video.webm">⬇ Télécharger la vidéo</a>
-      <p class="note">Format <b>WebM</b> — accepté directement par YouTube. Si tu as besoin d'un MP4 (TikTok/Instagram), convertis avec ffmpeg : <code>ffmpeg -i video.webm video.mp4</code></p>
+    <div id="dlZone"><a id="dlLink" download="lyric-video.mp4">⬇ Télécharger la vidéo</a>
+      <p class="note" id="dlNote">Format <b>MP4 (H.264)</b> — accepté directement par YouTube, TikTok et Instagram.</p>
     </div>
   </section>
 
@@ -572,19 +572,31 @@ On se croise à moitié, jamais vraiment le temps
       ...canvasStream.getVideoTracks(),
       ...recDest.stream.getAudioTracks()
     ]);
-    let mime = 'video/webm;codecs=vp9,opus';
-    if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm;codecs=vp8,opus';
-    if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+    // MP4 (H.264/AAC) en priorité : accepté par YouTube, TikTok, Instagram.
+    // Repli WebM si le navigateur ne sait pas enregistrer en MP4.
+    const formats = [
+      'video/mp4;codecs=avc1.640028,mp4a.40.2',
+      'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    const mime = formats.find(m=>MediaRecorder.isTypeSupported(m)) || 'video/webm';
+    const isMp4 = mime.startsWith('video/mp4');
     const rec = new MediaRecorder(mixed, {mimeType:mime, videoBitsPerSecond: 8_000_000});
     const chunks = [];
     rec.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop = ()=>{
-      const blob = new Blob(chunks, {type:'video/webm'});
+      const blob = new Blob(chunks, {type: isMp4 ? 'video/mp4' : 'video/webm'});
       const url = URL.createObjectURL(blob);
       const a = $('dlLink');
       a.href = url;
       const title = ($('songTitle').value||'lyric-video').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      a.download = title + '.webm';
+      a.download = title + (isMp4 ? '.mp4' : '.webm');
+      $('dlNote').innerHTML = isMp4
+        ? 'Format <b>MP4 (H.264)</b> — accepté directement par YouTube, TikTok et Instagram.'
+        : 'Ton navigateur ne sait pas enregistrer en MP4 : la vidéo est en <b>WebM</b> (accepté par YouTube). Pour TikTok, ouvre le site dans un Chrome ou Edge récent.';
       $('dlZone').style.display='block';
       $('recState').style.display='none';
       recording = false;
