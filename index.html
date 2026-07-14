@@ -6,6 +6,7 @@
 <title>Studio Lyric Video — Crée ta vidéo YouTube</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 <style>
   :root{
     --ink:#0d0b14;
@@ -587,8 +588,25 @@ On se croise à moitié, jamais vraiment le temps
     const rec = new MediaRecorder(mixed, {mimeType:mime, videoBitsPerSecond: 8_000_000});
     const chunks = [];
     rec.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
-    rec.onstop = ()=>{
-      const blob = new Blob(chunks, {type: isMp4 ? 'video/mp4' : 'video/webm'});
+    rec.onstop = async ()=>{
+      let blob = new Blob(chunks, {type: isMp4 ? 'video/mp4' : 'video/webm'});
+      // L'enregistreur du navigateur produit un MP4 "fragmenté" sans durée
+      // dans les métadonnées (0:00 sur téléphone, rejeté par TikTok).
+      // On le réécrit proprement avec ffmpeg.wasm : copie des pistes,
+      // aucun ré-encodage, juste des métadonnées standards.
+      if(isMp4 && window.FFmpeg){
+        try{
+          $('recText').textContent = 'Finalisation de la vidéo… (la 1re fois, un module se télécharge : patiente ~30 s)';
+          if(!window._ff) window._ff = FFmpeg.createFFmpeg({ mainName:'main', corePath:'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' });
+          const ff = window._ff;
+          if(!ff.isLoaded()) await ff.load();
+          ff.FS('writeFile','in.mp4', new Uint8Array(await blob.arrayBuffer()));
+          await ff.run('-i','in.mp4','-c','copy','-movflags','+faststart','out.mp4');
+          const data = ff.FS('readFile','out.mp4');
+          if(data.length > 1000) blob = new Blob([data.buffer], {type:'video/mp4'});
+          ff.FS('unlink','in.mp4'); ff.FS('unlink','out.mp4');
+        }catch(e){ console.warn('Finalisation impossible, fichier brut fourni :', e); }
+      }
       const url = URL.createObjectURL(blob);
       const a = $('dlLink');
       a.href = url;
