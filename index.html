@@ -196,7 +196,7 @@
     <div class="row" style="margin-top:14px">
       <div class="field">
         <label>Titre de la chanson</label>
-        <input type="text" id="songTitle" placeholder="Feu interdit" value="Feu interdit">
+        <input type="text" id="songTitle" placeholder="Se remplit avec le nom du fichier audio">
       </div>
       <div class="field">
         <label>Nom d'artiste</label>
@@ -316,6 +316,8 @@ On se croise à moitié, jamais vraiment le temps
     const f = e.target.files[0]; if(!f) return;
     player.src = URL.createObjectURL(f);
     $('audioName').textContent = f.name;
+    // Le titre de la chanson reprend le nom du fichier (sans l'extension)
+    $('songTitle').value = f.name.replace(/\.[^.]+$/,'').trim();
     $('audioBtn').classList.add('loaded');
     audioReady = true;
     updateExportState();
