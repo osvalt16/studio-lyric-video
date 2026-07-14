@@ -242,6 +242,17 @@ On se croise à moitié, jamais vraiment le temps
     <div class="step-head"><div class="badge">4</div><h2>Aperçu & export</h2></div>
     <canvas id="preview"></canvas>
     <audio id="player" controls></audio>
+    <div class="row" style="margin-top:14px">
+      <div class="field" style="max-width:180px">
+        <label>Début de l'extrait (optionnel)</label>
+        <input type="text" id="clipStart" placeholder="0:00">
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Fin de l'extrait (optionnel)</label>
+        <input type="text" id="clipEnd" placeholder="1:00">
+      </div>
+    </div>
+    <p class="note">Pour un <b>Short YouTube</b> : choisis la résolution <b>9:16 (Shorts)</b> à l'étape 1, puis un extrait de <b>60 s max</b> (ex. le refrain : 0:55 → 1:55). Laisse vide pour exporter la chanson entière.</p>
     <div class="controls">
       <button class="action" id="exportBtn" disabled>⏺ Exporter la vidéo</button>
       <span class="note" style="margin-top:0">L'export enregistre en temps réel : il dure le temps de la chanson. Laisse l'onglet ouvert.</span>
@@ -585,17 +596,32 @@ On se croise à moitié, jamais vraiment le temps
     $('dlZone').style.display='none';
     $('recState').style.display='flex';
 
-    player.currentTime = 0;
+    // extrait optionnel (utile pour les Shorts)
+    const clipStart = parseTime($('clipStart').value) || 0;
+    let clipEnd = parseTime($('clipEnd').value) || 0;
+    if(!(clipEnd > clipStart)) clipEnd = player.duration || Infinity;
+    player.currentTime = clipStart;
     rec.start(1000);
     player.play();
 
     const tick = setInterval(()=>{
       if(!recording){ clearInterval(tick); return; }
-      $('recText').textContent = 'Enregistrement… '+fmt(player.currentTime)+' / '+fmt(player.duration||0);
+      const end = Math.min(clipEnd, player.duration||clipEnd);
+      $('recText').textContent = 'Enregistrement… '+fmt(Math.max(0,player.currentTime-clipStart))+' / '+fmt(Math.max(0,end-clipStart));
     }, 500);
+
+    const onTime = ()=>{
+      if(player.currentTime >= clipEnd - 0.05){
+        player.removeEventListener('timeupdate', onTime);
+        player.pause();
+        setTimeout(()=>rec.stop(), 300);
+      }
+    };
+    player.addEventListener('timeupdate', onTime);
 
     const onEnd = ()=>{
       player.removeEventListener('ended', onEnd);
+      player.removeEventListener('timeupdate', onTime);
       setTimeout(()=>rec.stop(), 300);
     };
     player.addEventListener('ended', onEnd);
