@@ -211,6 +211,16 @@
         </select>
       </div>
     </div>
+    <div class="row" style="margin-top:14px">
+      <div class="field">
+        <label>Pseudo YouTube (incrusté sur la vidéo, vide = rien)</label>
+        <input type="text" id="ytHandle" value="oswalt.officiel">
+      </div>
+      <div class="field">
+        <label>Pseudo TikTok (incrusté sur la vidéo, vide = rien)</label>
+        <input type="text" id="ttHandle" value="oswalt.officiel">
+      </div>
+    </div>
   </section>
 
   <!-- STEP 2 -->
@@ -493,6 +503,48 @@ On se croise à moitié, jamais vraiment le temps
     ctx.fillStyle='rgba(255,255,255,.55)';
     ctx.font = '500 '+Math.round(base*0.03)+'px Outfit, sans-serif';
     ctx.fillText($('artistName').value || '', W/2, artY+artSize+base*0.085+base*0.05);
+
+    // Badges réseaux sociaux incrustés (logo + pseudo)
+    const ytH = $('ytHandle').value.trim();
+    const ttH = $('ttHandle').value.trim();
+    if(ytH || ttH){
+      const sf = Math.round(base*0.024);
+      const pad = base*0.03;
+      const yPos = pad + sf*0.75;
+      ctx.save();
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=sf*0.35;
+      if(ytH){
+        const lw = sf*1.5, lh = sf*1.05, lx = pad, ly = yPos - lh/2;
+        ctx.fillStyle = '#FF0000';
+        ctx.beginPath(); ctx.roundRect(lx, ly, lw, lh, lh*0.28); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(lx+lw*0.40, ly+lh*0.30);
+        ctx.lineTo(lx+lw*0.40, ly+lh*0.70);
+        ctx.lineTo(lx+lw*0.72, ly+lh*0.50);
+        ctx.closePath(); ctx.fill();
+        ctx.font = '600 '+sf+'px Outfit, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.textAlign = 'left';
+        ctx.fillText(ytH, lx+lw+sf*0.45, yPos);
+      }
+      if(ttH){
+        ctx.font = '600 '+sf+'px Outfit, sans-serif';
+        const tw = ctx.measureText(ttH).width;
+        const nx = W-pad-tw-sf*0.6, ny = yPos;
+        ctx.textAlign = 'center';
+        ctx.font = '700 '+Math.round(sf*1.4)+'px Outfit, sans-serif';
+        ctx.fillStyle = '#25F4EE'; ctx.fillText('\u266A', nx - sf*0.07, ny - sf*0.07);
+        ctx.fillStyle = '#FE2C55'; ctx.fillText('\u266A', nx + sf*0.07, ny + sf*0.07);
+        ctx.fillStyle = '#fff';    ctx.fillText('\u266A', nx, ny);
+        ctx.font = '600 '+sf+'px Outfit, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,.9)';
+        ctx.textAlign = 'right';
+        ctx.fillText(ttH, W-pad, ny);
+      }
+      ctx.restore();
+    }
 
     // lyrics
     const idx = currentLineIndex(t);
