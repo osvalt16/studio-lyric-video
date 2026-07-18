@@ -768,15 +768,15 @@ On se croise à moitié, jamais vraiment le temps
       ctx.fillRect(0,0,W*(t/player.duration),base*0.006);
     }
 
-    requestAnimationFrame(draw);
   }
+  function loop(){ draw(); requestAnimationFrame(loop); }
   // start draw loop once fonts are ready so canvas uses Syne/Outfit
   if(document.fonts && document.fonts.ready){
     Promise.all([
       document.fonts.load('800 40px Syne'),
       document.fonts.load('400 20px Outfit')
-    ]).finally(()=>requestAnimationFrame(draw));
-  } else requestAnimationFrame(draw);
+    ]).finally(()=>requestAnimationFrame(loop));
+  } else requestAnimationFrame(loop);
 
   // ---------- export ----------
   $('exportBtn').addEventListener('click', async ()=>{
@@ -855,6 +855,15 @@ On se croise à moitié, jamais vraiment le temps
       const end = Math.min(clipEnd, player.duration||clipEnd);
       $('recText').textContent = 'Enregistrement… '+fmt(Math.max(0,player.currentTime-clipStart))+' / '+fmt(Math.max(0,end-clipStart));
     }, 500);
+
+    // Pendant l'export : si l'onglet est masqué, requestAnimationFrame se fige.
+    // Ce minuteur continue de dessiner (l'onglet reste actif car il joue du son)
+    // et relance la vidéo de fond si le navigateur l'a mise en pause.
+    const keepDrawing = setInterval(()=>{
+      if(!recording){ clearInterval(keepDrawing); return; }
+      if(bgvReady && bgVideo.paused && !player.paused) bgVideo.play();
+      if(document.hidden) draw();
+    }, 33);
 
     const onTime = ()=>{
       if(player.currentTime >= clipEnd - 0.05){
