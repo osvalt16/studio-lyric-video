@@ -192,6 +192,12 @@
           <input type="file" id="coverFile" accept="image/*">
         </label>
       </div>
+      <div class="field">
+        <label>Vidéo de fond (optionnel, remplace la cover en fond)</label>
+        <label class="filebtn" id="bgvBtn">🎬 <span id="bgvName">Choisir la vidéo…</span>
+          <input type="file" id="bgvFile" accept="video/*">
+        </label>
+      </div>
     </div>
     <div class="row" style="margin-top:14px">
       <div class="field">
@@ -347,6 +353,21 @@ On se croise à moitié, jamais vraiment le temps
     $('promoToggle').style.borderColor = promoOn ? 'var(--ok)' : 'var(--line)';
   });
 
+  // Vidéo de fond : jouée en boucle derrière les paroles (karaoké sur vidéo)
+  const bgVideo = document.createElement('video');
+  bgVideo.muted = true; bgVideo.loop = true; bgVideo.playsInline = true;
+  let bgvReady = false;
+  $('bgvFile').addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    bgvReady = false;
+    bgVideo.src = URL.createObjectURL(f);
+    bgVideo.onloadeddata = ()=>{ bgvReady = true; if(!player.paused) bgVideo.play(); };
+    $('bgvName').textContent = f.name;
+    $('bgvBtn').classList.add('loaded');
+  });
+  player.addEventListener('play', ()=>{ if(bgvReady) bgVideo.play(); });
+  player.addEventListener('pause', ()=>{ if(bgvReady) bgVideo.pause(); });
+
   function updateExportState(){
     $('exportBtn').disabled = !audioReady || recording;
   }
@@ -498,7 +519,14 @@ On se croise à moitié, jamais vraiment le temps
 
     // background
     ctx.save();
-    if(coverImg){
+    if(bgvReady && bgVideo.videoWidth){
+      const scale = Math.max(W/bgVideo.videoWidth, H/bgVideo.videoHeight);
+      const bw = bgVideo.videoWidth*scale, bh = bgVideo.videoHeight*scale;
+      ctx.drawImage(bgVideo,(W-bw)/2,(H-bh)/2,bw,bh);
+      // voile sombre pour la lisibilité des paroles
+      ctx.fillStyle='rgba(8,6,12,.45)';
+      ctx.fillRect(0,0,W,H);
+    } else if(coverImg){
       const scale = Math.max(W/coverImg.width, H/coverImg.height) * 1.15;
       const bw = coverImg.width*scale, bh = coverImg.height*scale;
       ctx.filter = 'blur('+Math.round(base*0.03)+'px) brightness(0.32) saturate(1.15)';
