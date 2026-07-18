@@ -779,6 +779,31 @@ On se croise à moitié, jamais vraiment le temps
   } else requestAnimationFrame(loop);
 
   // ---------- export ----------
+  // Chargement du module de finalisation (avec serveur de secours si bloqué)
+  async function ensureFFmpeg(){
+    if(window.FFmpeg) return true;
+    await new Promise(res=>{
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js';
+      s.onload = res; s.onerror = res;
+      document.head.appendChild(s);
+    });
+    return !!window.FFmpeg;
+  }
+  // Réécrit le MP4 fragmenté en MP4 standard (durée correcte, accepté par TikTok)
+  async function finalizeMp4(blob){
+    if(!await ensureFFmpeg()) throw new Error('module de réparation bloqué (bloqueur de pub ou connexion)');
+    if(!window._ff) window._ff = FFmpeg.createFFmpeg({ mainName:'main', corePath:'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' });
+    const ff = window._ff;
+    if(!ff.isLoaded()) await ff.load();
+    ff.FS('writeFile','in.mp4', new Uint8Array(await blob.arrayBuffer()));
+    await ff.run('-i','in.mp4','-c','copy','-movflags','+faststart','out.mp4');
+    const data = ff.FS('readFile','out.mp4');
+    try{ ff.FS('unlink','in.mp4'); ff.FS('unlink','out.mp4'); }catch(_){}
+    if(data.length < 1000) throw new Error('fichier de sortie vide');
+    return new Blob([data.buffer], {type:'video/mp4'});
+  }
+
   $('exportBtn').addEventListener('click', async ()=>{
     if(recording) return;
     ensureAudioGraph();
@@ -805,32 +830,43 @@ On se croise à moitié, jamais vraiment le temps
     const chunks = [];
     rec.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
     rec.onstop = async ()=>{
-      let blob = new Blob(chunks, {type: isMp4 ? 'video/mp4' : 'video/webm'});
-      // L'enregistreur du navigateur produit un MP4 "fragmenté" sans durée
-      // dans les métadonnées (0:00 sur téléphone, rejeté par TikTok).
-      // On le réécrit proprement avec ffmpeg.wasm : copie des pistes,
-      // aucun ré-encodage, juste des métadonnées standards.
-      if(isMp4 && window.FFmpeg){
+      const rawBlob = new Blob(chunks, {type: isMp4 ? 'video/mp4' : 'video/webm'});
+      let blob = rawBlob, fixed = !isMp4;
+      if(isMp4){
         try{
           $('recText').textContent = 'Finalisation de la vidéo… (la 1re fois, un module se télécharge : patiente ~30 s)';
-          if(!window._ff) window._ff = FFmpeg.createFFmpeg({ mainName:'main', corePath:'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' });
-          const ff = window._ff;
-          if(!ff.isLoaded()) await ff.load();
-          ff.FS('writeFile','in.mp4', new Uint8Array(await blob.arrayBuffer()));
-          await ff.run('-i','in.mp4','-c','copy','-movflags','+faststart','out.mp4');
-          const data = ff.FS('readFile','out.mp4');
-          if(data.length > 1000) blob = new Blob([data.buffer], {type:'video/mp4'});
-          ff.FS('unlink','in.mp4'); ff.FS('unlink','out.mp4');
-        }catch(e){ console.warn('Finalisation impossible, fichier brut fourni :', e); }
+          blob = await finalizeMp4(rawBlob);
+          fixed = true;
+        }catch(e){ console.warn('Finalisation échouée :', e); }
       }
-      const url = URL.createObjectURL(blob);
+      window._lastRaw = rawBlob;
       const a = $('dlLink');
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       const title = ($('songTitle').value||'lyric-video').toLowerCase().replace(/[^a-z0-9]+/g,'-');
       a.download = title + (isMp4 ? '.mp4' : '.webm');
-      $('dlNote').innerHTML = isMp4
-        ? 'Format <b>MP4 (H.264)</b> — accepté directement par YouTube, TikTok et Instagram.'
-        : 'Ton navigateur ne sait pas enregistrer en MP4 : la vidéo est en <b>WebM</b> (accepté par YouTube). Pour TikTok, ouvre le site dans un Chrome ou Edge récent.';
+      if(!isMp4){
+        $('dlNote').innerHTML = 'Ton navigateur ne sait pas enregistrer en MP4 : la vidéo est en <b>WebM</b> (accepté par YouTube). Pour TikTok, ouvre le site dans un Chrome ou Edge récent.';
+      } else if(fixed){
+        $('dlNote').innerHTML = 'Format <b>MP4 (H.264)</b> finalisé ✔ — durée correcte, accepté par YouTube, TikTok et Instagram.';
+      } else {
+        $('dlNote').innerHTML = '⚠️ <b>La finalisation a échoué</b> : ce fichier risque d\'afficher 0:00 et d\'être refusé par TikTok. Vérifie ta connexion, désactive ton bloqueur de pub sur ce site, puis clique : ';
+        const b = document.createElement('button');
+        b.className = 'ghost';
+        b.style.cssText = 'margin-left:8px;padding:8px 14px;font-size:13px';
+        b.textContent = '🔧 Réparer la vidéo';
+        b.addEventListener('click', async ()=>{
+          b.disabled = true; b.textContent = '⏳ Réparation…';
+          try{
+            const okBlob = await finalizeMp4(window._lastRaw);
+            $('dlLink').href = URL.createObjectURL(okBlob);
+            $('dlNote').innerHTML = 'Format <b>MP4 (H.264)</b> réparé ✔ — retélécharge la vidéo, elle est prête pour YouTube et TikTok.';
+          }catch(err){
+            b.disabled = false; b.textContent = '🔧 Réparer la vidéo';
+            alert('Réparation impossible : ' + (err.message || err) + '\nEssaie de recharger la page (Ctrl+F5) et refais l\'export.');
+          }
+        });
+        $('dlNote').appendChild(b);
+      }
       $('dlZone').style.display='block';
       $('recState').style.display='none';
       recording = false;
