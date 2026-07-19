@@ -247,6 +247,10 @@
   <section class="step">
     <div class="step-head"><div class="badge">2</div><h2>Paroles</h2></div>
     <p class="hint">Une ligne de texte = une ligne affichée à l'écran. Laisse vide si tu veux juste l'équaliseur sans paroles.</p>
+    <div class="controls" style="margin-bottom:12px">
+      <button type="button" class="ghost" id="aiTranscribe">🪄 Écrire les paroles depuis l'audio (IA)</button>
+      <span class="note" style="margin-top:0">Expérimental : la 1re fois, un modèle (~60 Mo) se télécharge, puis la transcription prend plusieurs minutes. L'IA se trompe souvent sur le chant — relis et corrige le texte.</span>
+    </div>
     <textarea id="lyricsBox" placeholder="Premier regard dans l'open space, huit heures du mat'
 Ton café à la main, mon cœur qui se détache
 On se croise à moitié, jamais vraiment le temps
@@ -424,6 +428,45 @@ On se croise à moitié, jamais vraiment le temps
     analyser.connect(recDest);
   }
   player.addEventListener('play', ensureAudioGraph);
+
+  // ---------- transcription IA (Whisper dans le navigateur) ----------
+  $('aiTranscribe').addEventListener('click', async ()=>{
+    const f = $('audioFile').files[0];
+    if(!f){ alert('Charge d\'abord ton fichier audio (étape 1).'); return; }
+    const btn = $('aiTranscribe');
+    btn.disabled = true;
+    try{
+      btn.textContent = '⏳ Chargement du module IA…';
+      if(!window._tf) window._tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0/dist/transformers.min.js');
+      if(!window._asr){
+        window._asr = await window._tf.pipeline('automatic-speech-recognition', 'onnx-community/whisper-base', {
+          dtype: 'q8',
+          progress_callback: p=>{ if(p.status==='progress' && p.total) btn.textContent = '⏳ Téléchargement du modèle… '+Math.round(p.loaded/p.total*100)+'%'; }
+        });
+      }
+      btn.textContent = '⏳ Décodage de l\'audio…';
+      const buf = await f.arrayBuffer();
+      const ac = new AudioContext({sampleRate:16000});
+      const decoded = await ac.decodeAudioData(buf);
+      const data = decoded.getChannelData(0);
+      ac.close();
+      btn.textContent = '⏳ Transcription en cours… (plusieurs minutes, laisse l\'onglet ouvert)';
+      const out = await window._asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:true});
+      const linesTxt = (out.chunks || []).map(c=>c.text.trim()).filter(Boolean);
+      const txt = linesTxt.length ? linesTxt.join('\n') : (out.text || '').trim();
+      if(!txt){ alert('L\'IA n\'a pas réussi à entendre de paroles dans ce fichier.'); }
+      else {
+        $('lyricsBox').value = txt;
+        alert('Paroles écrites ! Relis-les et corrige les erreurs, puis lance la synchro (étape 3).');
+      }
+      btn.textContent = '🪄 Transcrire à nouveau';
+    }catch(e){
+      console.warn('Transcription IA :', e);
+      alert('Transcription impossible : ' + (e.message || e));
+      btn.textContent = '🪄 Écrire les paroles depuis l\'audio (IA)';
+    }
+    btn.disabled = false;
+  });
 
   // ---------- lyrics sync ----------
   function parseLyrics(){
