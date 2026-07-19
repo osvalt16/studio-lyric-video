@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Studio Lyric Video — Crée ta vidéo YouTube</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&family=Montserrat:wght@800&family=Bebas+Neue&family=Playfair+Display:wght@700&family=Pacifico&family=Oswald:wght@600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 <style>
   :root{
@@ -251,6 +251,42 @@
 Ton café à la main, mon cœur qui se détache
 On se croise à moitié, jamais vraiment le temps
 ..."></textarea>
+    <div class="row" style="margin-top:14px">
+      <div class="field" style="max-width:220px">
+        <label>Police des paroles</label>
+        <select id="lyrFont">
+          <option value="Syne" selected>Syne (par défaut)</option>
+          <option value="Montserrat">Montserrat (moderne)</option>
+          <option value="Bebas Neue">Bebas Neue (impact)</option>
+          <option value="Oswald">Oswald (condensé)</option>
+          <option value="Playfair Display">Playfair (élégant)</option>
+          <option value="Pacifico">Pacifico (manuscrit)</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:140px">
+        <label>Taille</label>
+        <select id="lyrSize">
+          <option value="0.040">Petite</option>
+          <option value="0.049" selected>Normale</option>
+          <option value="0.060">Grande</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:140px">
+        <label>Couleur 1</label>
+        <input type="color" id="lyrCol1" value="#ff5c49" style="width:100%;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);cursor:pointer">
+      </div>
+      <div class="field" style="max-width:140px">
+        <label>Couleur 2</label>
+        <input type="color" id="lyrCol2" value="#ff9d3d" style="width:100%;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);cursor:pointer">
+      </div>
+      <div class="field" style="max-width:170px">
+        <label>Style</label>
+        <select id="lyrCase">
+          <option value="normal" selected>Normal</option>
+          <option value="upper">MAJUSCULES</option>
+        </select>
+      </div>
+    </div>
   </section>
 
   <!-- STEP 3 -->
@@ -611,14 +647,18 @@ On se croise à moitié, jamais vraiment le temps
     const lyricY = portrait ? H*0.72 : H*0.70;
     const maxW = W*0.84;
     if(idx>=0 && lines[idx]){
-      const mainFont = '700 '+Math.round(base*0.049)+'px Syne, sans-serif';
-      const rows = wrapText(lines[idx].text, maxW, mainFont);
+      const fam = $('lyrFont').value;
+      const sizeF = parseFloat($('lyrSize').value) || 0.049;
+      const mainFont = '700 '+Math.round(base*sizeF)+'px "'+fam+'", sans-serif';
+      let lineTxt = lines[idx].text;
+      if($('lyrCase').value==='upper') lineTxt = lineTxt.toUpperCase();
+      const rows = wrapText(lineTxt, maxW, mainFont);
       ctx.font = mainFont;
-      const lh = base*0.062;
+      const lh = base*sizeF*1.27;
       ctx.shadowColor='rgba(0,0,0,.75)'; ctx.shadowBlur=base*0.012;
       rows.forEach((r,i)=>{
         const g = ctx.createLinearGradient(W/2-200,0,W/2+200,0);
-        g.addColorStop(0,'#ff5c49'); g.addColorStop(1,'#ff9d3d');
+        g.addColorStop(0,$('lyrCol1').value); g.addColorStop(1,$('lyrCol2').value);
         ctx.fillStyle = g;
         ctx.fillText(r, W/2, lyricY + i*lh);
       });
@@ -774,7 +814,12 @@ On se croise à moitié, jamais vraiment le temps
   if(document.fonts && document.fonts.ready){
     Promise.all([
       document.fonts.load('800 40px Syne'),
-      document.fonts.load('400 20px Outfit')
+      document.fonts.load('400 20px Outfit'),
+      document.fonts.load('800 40px Montserrat'),
+      document.fonts.load('400 40px "Bebas Neue"'),
+      document.fonts.load('600 40px Oswald'),
+      document.fonts.load('700 40px "Playfair Display"'),
+      document.fonts.load('400 40px Pacifico')
     ]).finally(()=>requestAnimationFrame(loop));
   } else requestAnimationFrame(loop);
 
