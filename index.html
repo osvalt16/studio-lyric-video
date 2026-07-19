@@ -481,20 +481,21 @@ On se croise à moitié, jamais vraiment le temps
     try{
       btn.textContent = '⏳ Chargement du module IA…';
       if(!window._tf) window._tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0/dist/transformers.min.js');
-      if(!window._asr){
-        window._asr = await window._tf.pipeline('automatic-speech-recognition', 'onnx-community/whisper-base', {
-          dtype: 'q8',
-          progress_callback: p=>{ if(p.status==='progress' && p.total) btn.textContent = '⏳ Téléchargement du modèle… '+Math.round(p.loaded/p.total*100)+'%'; }
-        });
-      }
+      // Modèle léger : suffisant pour reconnaître QUAND les paroles (déjà fournies) sont chantées
+      const asr = await window._tf.pipeline('automatic-speech-recognition', 'onnx-community/whisper-tiny', {
+        dtype: 'q8',
+        progress_callback: p=>{ if(p.status==='progress' && p.total) btn.textContent = '⏳ Téléchargement du modèle… '+Math.round(p.loaded/p.total*100)+'%'; }
+      });
       btn.textContent = '⏳ Décodage de l\'audio…';
       const buf = await f.arrayBuffer();
       const ac = new AudioContext({sampleRate:16000});
       const decoded = await ac.decodeAudioData(buf);
       const data = decoded.getChannelData(0);
       ac.close();
-      btn.textContent = '⏳ L\'IA écoute la chanson… (plusieurs minutes, laisse l\'onglet ouvert)';
-      const out = await window._asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:true});
+      btn.textContent = '⏳ L\'IA écoute la chanson… (quelques minutes, laisse l\'onglet ouvert)';
+      const out = await asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:true});
+      // libère la mémoire du modèle (évite les plantages d'onglet)
+      try{ await asr.dispose(); }catch(_){}
       const normTok = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[''`]/g,'').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean);
       const segs = (out.chunks || [])
         .filter(c => c.timestamp && c.timestamp[0] != null)
