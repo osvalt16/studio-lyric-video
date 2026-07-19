@@ -299,8 +299,10 @@ On se croise à moitié, jamais vraiment le temps
     <p class="hint">La chanson se lance, et tu appuies sur le gros bouton (ou la barre <b>Espace</b>) pile quand chaque ligne commence à être chantée. Tu pourras ajuster les temps à la main après.</p>
     <div class="controls">
       <button class="action" id="startSync">▶ Lancer la synchro</button>
+      <button class="ghost" id="aiSync">🪄 Synchro automatique (IA)</button>
       <button class="ghost" id="stopSync" style="display:none">✕ Arrêter</button>
     </div>
+    <p class="note">La synchro IA écoute ta chanson et cale automatiquement chaque ligne de tes paroles (étape 2) au bon moment. Plusieurs minutes de calcul — tu peux ensuite ajuster les temps à la main.</p>
     <div id="syncZone">
       <button id="tapBtn">👆 CETTE LIGNE COMMENCE — TAP !</button>
       <div class="nextline">Prochaine ligne : <b id="upcoming">—</b></div>
@@ -464,6 +466,87 @@ On se croise à moitié, jamais vraiment le temps
       console.warn('Transcription IA :', e);
       alert('Transcription impossible : ' + (e.message || e));
       btn.textContent = '🪄 Écrire les paroles depuis l\'audio (IA)';
+    }
+    btn.disabled = false;
+  });
+
+  // ---------- synchro automatique par IA (alignement paroles/audio) ----------
+  $('aiSync').addEventListener('click', async ()=>{
+    const f = $('audioFile').files[0];
+    if(!f){ alert('Charge d\'abord ton fichier audio (étape 1).'); return; }
+    const txt = parseLyrics();
+    if(!txt.length){ alert('Colle d\'abord tes paroles (étape 2).'); return; }
+    const btn = $('aiSync');
+    btn.disabled = true;
+    try{
+      btn.textContent = '⏳ Chargement du module IA…';
+      if(!window._tf) window._tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.0/dist/transformers.min.js');
+      if(!window._asr){
+        window._asr = await window._tf.pipeline('automatic-speech-recognition', 'onnx-community/whisper-base', {
+          dtype: 'q8',
+          progress_callback: p=>{ if(p.status==='progress' && p.total) btn.textContent = '⏳ Téléchargement du modèle… '+Math.round(p.loaded/p.total*100)+'%'; }
+        });
+      }
+      btn.textContent = '⏳ Décodage de l\'audio…';
+      const buf = await f.arrayBuffer();
+      const ac = new AudioContext({sampleRate:16000});
+      const decoded = await ac.decodeAudioData(buf);
+      const data = decoded.getChannelData(0);
+      ac.close();
+      btn.textContent = '⏳ L\'IA écoute la chanson… (plusieurs minutes, laisse l\'onglet ouvert)';
+      const out = await window._asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:'word'});
+      const normTok = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[''`]/g,'').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean);
+      const words = (out.chunks || [])
+        .filter(c => c.timestamp && c.timestamp[0] != null)
+        .map(c => ({ w: normTok(c.text).join(''), t: c.timestamp[0] }))
+        .filter(x => x.w);
+      if(words.length < 5) throw new Error('l\'IA n\'a pas entendu assez de mots dans la chanson');
+      // Alignement : pour chaque ligne, on cherche ses mots dans la transcription
+      let cursor = 0;
+      const res = [];
+      txt.forEach(line=>{
+        const lw = normTok(line);
+        if(!lw.length) return;
+        let best = -1, bestScore = 0;
+        const to = Math.min(words.length-1, cursor+140);
+        for(let s=cursor; s<=to; s++){
+          let score = 0, wi = s;
+          for(const w of lw){
+            for(let k=wi; k<Math.min(words.length, s+lw.length*2+4); k++){
+              if(words[k].w === w){ score++; wi = k+1; break; }
+            }
+          }
+          if(score > bestScore){ bestScore = score; best = s; }
+          if(score === lw.length) break;
+        }
+        if(best >= 0 && bestScore >= Math.max(1, lw.length*0.4)){
+          res.push({ t: words[best].t, text: line });
+          cursor = best + Math.max(1, Math.round(lw.length*0.7));
+        } else {
+          res.push({ t: null, text: line });
+        }
+      });
+      // Lignes introuvables : on les place entre leurs voisines
+      for(let i=0;i<res.length;i++){
+        if(res[i].t === null){
+          const prev = res.slice(0,i).reverse().find(r=>r.t!==null);
+          const next = res.slice(i+1).find(r=>r.t!==null);
+          if(prev && next) res[i].t = prev.t + (next.t - prev.t)/2;
+          else if(prev) res[i].t = prev.t + 3;
+          else if(next) res[i].t = Math.max(0, next.t - 3);
+          else res[i].t = i*3;
+        }
+      }
+      res.sort((a,b)=>a.t-b.t);
+      lines = res;
+      renderTimings();
+      $('startSync').textContent = '↻ Refaire la synchro';
+      alert('Synchro automatique terminée ! Vérifie les temps dans la liste en dessous — tu peux les ajuster à la main, ou refaire la synchro par tap si besoin.');
+      btn.textContent = '🪄 Synchro automatique (IA)';
+    }catch(e){
+      console.warn('Synchro IA :', e);
+      alert('Synchro IA impossible : ' + (e.message || e));
+      btn.textContent = '🪄 Synchro automatique (IA)';
     }
     btn.disabled = false;
   });
