@@ -494,48 +494,43 @@ On se croise à moitié, jamais vraiment le temps
       const data = decoded.getChannelData(0);
       ac.close();
       btn.textContent = '⏳ L\'IA écoute la chanson… (plusieurs minutes, laisse l\'onglet ouvert)';
-      const out = await window._asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:'word'});
+      const out = await window._asr(data, {language:'french', task:'transcribe', chunk_length_s:30, stride_length_s:5, return_timestamps:true});
       const normTok = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[''`]/g,'').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(Boolean);
-      const words = (out.chunks || [])
+      const segs = (out.chunks || [])
         .filter(c => c.timestamp && c.timestamp[0] != null)
-        .map(c => ({ w: normTok(c.text).join(''), t: c.timestamp[0] }))
-        .filter(x => x.w);
-      if(words.length < 5) throw new Error('l\'IA n\'a pas entendu assez de mots dans la chanson');
-      // Alignement : pour chaque ligne, on cherche ses mots dans la transcription
+        .map(c => ({ toks: normTok(c.text), t: c.timestamp[0] }))
+        .filter(s => s.toks.length);
+      if(segs.length < 2) throw new Error('l\'IA n\'a pas entendu assez de phrases dans la chanson');
+      // Alignement : chaque ligne de paroles est associée à la phrase entendue la plus proche
       let cursor = 0;
       const res = [];
       txt.forEach(line=>{
         const lw = normTok(line);
         if(!lw.length) return;
         let best = -1, bestScore = 0;
-        const to = Math.min(words.length-1, cursor+140);
-        for(let s=cursor; s<=to; s++){
-          let score = 0, wi = s;
-          for(const w of lw){
-            for(let k=wi; k<Math.min(words.length, s+lw.length*2+4); k++){
-              if(words[k].w === w){ score++; wi = k+1; break; }
-            }
-          }
+        for(let s=cursor; s<Math.min(segs.length, cursor+8); s++){
+          const set = new Set(segs[s].toks);
+          let sc = 0; lw.forEach(w=>{ if(set.has(w)) sc++; });
+          const score = sc / Math.max(lw.length, 1);
           if(score > bestScore){ bestScore = score; best = s; }
-          if(score === lw.length) break;
         }
-        if(best >= 0 && bestScore >= Math.max(1, lw.length*0.4)){
-          res.push({ t: words[best].t, text: line });
-          cursor = best + Math.max(1, Math.round(lw.length*0.7));
+        if(best >= 0 && bestScore >= 0.3){
+          res.push({ t: segs[best].t, text: line });
+          cursor = best + 1;
         } else {
           res.push({ t: null, text: line });
         }
       });
-      // Lignes introuvables : on les place entre leurs voisines
-      for(let i=0;i<res.length;i++){
-        if(res[i].t === null){
-          const prev = res.slice(0,i).reverse().find(r=>r.t!==null);
-          const next = res.slice(i+1).find(r=>r.t!==null);
-          if(prev && next) res[i].t = prev.t + (next.t - prev.t)/2;
-          else if(prev) res[i].t = prev.t + 3;
-          else if(next) res[i].t = Math.max(0, next.t - 3);
-          else res[i].t = i*3;
-        }
+      // Lignes introuvables : réparties régulièrement entre leurs voisines trouvées
+      let ii = 0;
+      while(ii < res.length){
+        if(res[ii].t === null){
+          let jj = ii; while(jj < res.length && res[jj].t === null) jj++;
+          const prevT = ii > 0 ? res[ii-1].t : 0;
+          const nextT = jj < res.length ? res[jj].t : prevT + (jj-ii)*3.5;
+          for(let k=ii; k<jj; k++) res[k].t = prevT + (nextT-prevT)*(k-ii+1)/(jj-ii+1);
+          ii = jj;
+        } else ii++;
       }
       res.sort((a,b)=>a.t-b.t);
       lines = res;
